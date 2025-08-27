@@ -7,6 +7,7 @@ export type NormalizedReview = {
   reviewType?: 'guest-to-host' | 'host-to-guest'
   status?: string
   rating: number | null
+  derivedRating?: number | null
   title?: string | null
   text: string
   language?: string | null
