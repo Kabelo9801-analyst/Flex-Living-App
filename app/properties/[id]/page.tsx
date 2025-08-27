@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { normalizeHostawayReview } from '@/lib/normalize'
-import type { NormalizedReview } from '@/lib/types'
+import type { NormalizedReview, HostawayRawReview } from '@/lib/types'
 
 async function loadApproved() {
   try {

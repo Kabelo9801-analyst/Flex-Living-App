@@ -16,6 +16,29 @@ export type NormalizedReview = {
   sentiment: { score: number; label: 'positive' | 'neutral' | 'negative' }
   approved?: boolean
   url?: string | null
+  types?: string[] // e.g. ['google', 'hostaway']
+}
+
+// Represents a raw Hostaway review object as returned by the API or mock JSON
+export type HostawayRawReview = {
+  id: number
+  type?: string
+  status?: string
+  rating?: number | null
+  publicReview?: string
+  privateFeedback?: string
+  reviewCategory?: { category: string; rating: number }[]
+  submittedAt?: string
+  guestName?: string
+  reviewerName?: string
+  listingMapId?: number
+  listingId?: number
+  listingName?: string
+  channel?: string
+  channelId?: number
+  arrivalDate?: string
+  departureDate?: string
+  language?: string
 }
 
 export type ReviewSummary = {

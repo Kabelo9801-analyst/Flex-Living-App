@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { normalizeHostawayReview, buildSummary } from '@/lib/normalize'
-import { NormalizedReview } from '@/lib/types'
+import type { NormalizedReview, HostawayRawReview } from '@/lib/types'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
@@ -82,7 +82,9 @@ export async function GET(req: NextRequest) {
   const to = searchParams.get('to') ? new Date(searchParams.get('to')!) : null
   const q = searchParams.get('q')?.toLowerCase()
 
-  let normalized: NormalizedReview[] = items.map((r:any) => normalizeHostawayReview(r, approvedMap))
+  let normalized: NormalizedReview[] = items.map(
+    (r: HostawayRawReview) => normalizeHostawayReview(r, approvedMap)
+  )
 
   if (channel) normalized = normalized.filter(r => r.channel.toLowerCase() === channel.toLowerCase())
   if (type) normalized = normalized.filter(r => (r.reviewType||'').toLowerCase() === type.toLowerCase())
