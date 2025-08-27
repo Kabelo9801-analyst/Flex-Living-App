@@ -1,0 +1,9 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/reviews/google/route": "app/api/reviews/google/route.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/api/reviews/hostaway/route": "app/api/reviews/hostaway/route.js",
+  "/page": "app/page.js",
+  "/api/reviews/approve/route": "app/api/reviews/approve/route.js",
+  "/properties/[id]/page": "app/properties/[id]/page.js"
+}
