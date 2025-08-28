@@ -1,10 +1,21 @@
-export const toISO = (dt?: string | null) => {
-  if (!dt) return new Date(0).toISOString()
-  const d = new Date(dt)
-  return isNaN(d.getTime()) ? new Date(0).toISOString() : d.toISOString()
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
 }
-export const clampRating = (n?: number | null) => {
-  if (n == null) return null
-  const c = Math.max(1, Math.min(5, Number(n)))
-  return Math.round(c * 10) / 10
+
+// app/lib/utils.ts
+
+// Convert a date string to ISO (or fallback)
+export function toISO(date: string | Date | null | undefined): string {
+  if (!date) return new Date().toISOString()
+  return (typeof date === 'string' ? new Date(date) : date).toISOString()
 }
+
+// Clamp ratings between 1 and 5 stars
+export function clampRating(rating: number | null | undefined): number | null {
+  if (rating == null) return null
+  return Math.max(1, Math.min(5, rating))
+}
+

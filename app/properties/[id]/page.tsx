@@ -1,34 +1,24 @@
-import fs from 'node:fs/promises'
-import path from 'node:path'
-import { normalizeHostawayReview } from '@/lib/normalize'
-import type { NormalizedReview, HostawayRawReview } from '@/lib/types'
-
-async function loadApproved() {
-  try {
-    return JSON.parse(
-      await fs.readFile(path.join(process.cwd(), 'data', 'approved.json'), 'utf-8')
-    )
-  } catch {
-    return {}
-  }
-}
-
-async function loadMock() {
-  return JSON.parse(
-    await fs.readFile(path.join(process.cwd(), 'data', 'mockReviews.json'), 'utf-8')
-  )
-}
+import type { NormalizedReview } from '@/lib/types'
 
 export default async function PropertyPage({ params }: { params: { id: string } }) {
   const id = Number(params.id)
-  const mocked: HostawayRawReview[] = await loadMock()
-  const approvedMap = await loadApproved()
 
-  // ✅ Explicit typing for each step
-  const reviews: NormalizedReview[] = mocked
-    .filter((r: HostawayRawReview) => Number(r.listingMapId ?? r.listingId) === id)
-    .map((r: HostawayRawReview) => normalizeHostawayReview(r, approvedMap))
-    .filter((r: NormalizedReview) => r.approved)
+  // ✅ Call the API route instead of loading mock files
+  const baseUrl =
+  typeof window === 'undefined'
+    ? process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+    : ''
+
+const res = await fetch(`${baseUrl}/api/reviews/hostaway?listingId=${id}`, { cache: 'no-store' })
+
+
+  if (!res.ok) {
+    return <div className="p-6">Failed to load reviews for this property.</div>
+  }
+
+  const data = await res.json()
+  const reviews: NormalizedReview[] = (data.reviews || [])
+  .filter((r: NormalizedReview) => r.approved)
 
   const listingName = reviews[0]?.listingName || `Listing ${id}`
 

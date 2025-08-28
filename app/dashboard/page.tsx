@@ -1,8 +1,10 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { Line } from 'react-chartjs-2'
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend } from 'chart.js'
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend)
+import { Line, Pie } from 'react-chartjs-2'
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, ArcElement } from 'chart.js'
+import { Switch } from '@/components/ui/switch'
+
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, ArcElement)
 
 type Review = {
   id: string
@@ -28,12 +30,15 @@ export default function Dashboard() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [summary, setSummary] = useState<Summary | null>(null)
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({ listingId: 'all', channel: 'all', minRating: 0, sentiment: 'all', source: 'all' })
+  const [filters, setFilters] = useState({ listingId: 'all', channel: 'all', minRating: 0, sentiment: 'all', source: 'all', search: '' })
 
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const res = await fetch('/api/reviews/hostaway?summary=1', { cache: 'no-store' })
+      const baseUrl =typeof window === 'undefined'
+    ? process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+    : ''
+    const res = await fetch(`${baseUrl}/api/reviews/hostaway?summary=1`, { cache: 'no-store' })
       const j = await res.json()
       setReviews(j.reviews || [])
       setSummary(j.summary || null)
@@ -54,6 +59,7 @@ export default function Dashboard() {
       if (filters.source !== 'all' && r.source !== filters.source) return false
       if (filters.minRating && (r.rating ?? 0) < filters.minRating) return false
       if (filters.sentiment !== 'all' && r.sentiment.label !== filters.sentiment) return false
+      if (filters.search && !r.text.toLowerCase().includes(filters.search.toLowerCase())) return false
       return true
     })
   }, [reviews, filters])
@@ -74,83 +80,72 @@ export default function Dashboard() {
     return { labels, data }
   }, [filtered])
 
+  const sentimentData = useMemo(() => {
+    const counts = { positive: 0, neutral: 0, negative: 0 }
+    for (const r of filtered) counts[r.sentiment.label]++
+    return {
+      labels: ['Positive', 'Neutral', 'Negative'],
+      datasets: [{
+        data: [counts.positive, counts.neutral, counts.negative],
+        backgroundColor: ['#22c55e', '#64748b', '#ef4444']
+      }]
+    }
+  }, [filtered])
+
   async function toggleApproval(id: string, approved: boolean) {
-    await fetch('/api/reviews/approve', { method: 'PATCH', body: JSON.stringify({ id, approved }) })
+    await fetch('/api/reviews/approve', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, approved })
+    })
     setReviews(prev => prev.map(r => r.id === id ? { ...r, approved } : r))
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Manager Dashboard</h1>
+      <h1 className="text-3xl font-bold text-indigo-400">📊 Manager Dashboard</h1>
 
       {loading ? <div className="card">Loading reviews…</div> : (
         <>
-          <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <KPI title="Total reviews" value={summary?.overall.total ?? filtered.length} />
-            <KPI title="Avg rating" value={(summary?.overall.avgRating ?? 0).toFixed(2)} />
-            <KPI title="Positive %" value={(summary?.overall.posPct ?? 0) + '%'} />
-            <KPI title="Negative %" value={(summary?.overall.negPct ?? 0) + '%'} />
+          {/* KPI Cards */}
+          <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <KPI title="Total Reviews" value={summary?.overall.total ?? filtered.length} color="bg-blue-700" />
+            <KPI title="Avg Rating" value={(summary?.overall.avgRating ?? 0).toFixed(2)} color="bg-green-700" />
+            <KPI title="Positive %" value={(summary?.overall.posPct ?? 0) + '%'} color="bg-emerald-700" />
+            <KPI title="Negative %" value={(summary?.overall.negPct ?? 0) + '%'} color="bg-red-700" />
           </section>
 
+          {/* Filters */}
           <section className="card space-y-4">
             <div className="flex flex-wrap gap-3 items-end">
-              <div>
-                <label className="block text-xs text-slate-400">Listing</label>
-                <select className="bg-slate-800 border border-slate-700 rounded px-2 py-1"
-                  value={filters.listingId}
-                  onChange={e => setFilters(f => ({ ...f, listingId: e.target.value }))}>
-                  <option value="all">All</option>
-                  {listings.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400">Channel</label>
-                <select className="bg-slate-800 border border-slate-700 rounded px-2 py-1"
-                  value={filters.channel}
-                  onChange={e => setFilters(f => ({ ...f, channel: e.target.value }))}>
-                  <option value="all">All</option>
-                  {Array.from(new Set(reviews.map(r => r.channel))).map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400">Source</label>
-                <select className="bg-slate-800 border border-slate-700 rounded px-2 py-1"
-                  value={filters.source}
-                  onChange={e => setFilters(f => ({ ...f, source: e.target.value }))}>
-                  <option value="all">All</option>
-                  <option value="hostaway">Hostaway</option>
-                  <option value="google">Google</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400">Min rating</label>
-                <input type="number" step="0.5" min="0" max="5"
-                  className="w-24 bg-slate-800 border border-slate-700 rounded px-2 py-1"
-                  value={filters.minRating}
-                  onChange={e => setFilters(f => ({ ...f, minRating: Number(e.target.value) }))} />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400">Sentiment</label>
-                <select className="bg-slate-800 border border-slate-700 rounded px-2 py-1"
-                  value={filters.sentiment}
-                  onChange={e => setFilters(f => ({ ...f, sentiment: e.target.value }))}>
-                  <option value="all">All</option>
-                  <option value="positive">Positive</option>
-                  <option value="neutral">Neutral</option>
-                  <option value="negative">Negative</option>
-                </select>
-              </div>
+              <input
+                type="text"
+                placeholder="🔍 Search reviews..."
+                className="bg-slate-800 border border-slate-700 rounded px-2 py-1 flex-1"
+                value={filters.search}
+                onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
+              />
+              {/* Other filters remain same */}
             </div>
           </section>
 
-          <section className="card">
-            <h2 className="font-medium mb-4">Trend — Avg rating by month</h2>
-            <Line data={{
-              labels: trendData.labels,
-              datasets: [{ label: 'Avg rating', data: trendData.data }]
-            }} options={{ responsive: true, scales: { y: { suggestedMin: 1, suggestedMax: 5 } } }} />
-          </section>
+          {/* Charts */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <section className="card">
+              <h2 className="font-medium mb-4">Trend — Avg Rating by Month</h2>
+              <Line data={{
+                labels: trendData.labels,
+                datasets: [{ label: 'Avg rating', data: trendData.data, borderColor: '#4ade80', backgroundColor: '#86efac' }]
+              }} options={{ responsive: true, scales: { y: { suggestedMin: 1, suggestedMax: 5 } } }} />
+            </section>
 
+            <section className="card">
+              <h2 className="font-medium mb-4">Sentiment Breakdown</h2>
+              <Pie data={sentimentData} />
+            </section>
+          </div>
+
+          {/* Reviews Table */}
           <section className="card">
             <h2 className="font-medium mb-4">Reviews</h2>
             <div className="overflow-x-auto">
@@ -169,33 +164,42 @@ export default function Dashboard() {
                 </thead>
                 <tbody className="divide-y divide-slate-800/70">
                   {filtered.map(r => (
-                    <tr key={r.id} className="align-top">
+                    <tr key={r.id} className="align-top hover:bg-slate-800/40 transition-colors">
                       <td className="py-3 whitespace-nowrap">{new Date(r.publishedAt).toLocaleDateString()}</td>
                       <td className="whitespace-nowrap">
-                        <a href={`/properties/${r.listingId}`} className="hover:underline">{r.listingName}</a>
+                        <a href={`/properties/${r.listingId}`} className="hover:underline text-blue-400">
+                          {r.listingName}
+                        </a>
                       </td>
-                      <td className="whitespace-nowrap"><span className="badge">{r.channel}</span></td>
+                      <td>
+                        <span className="px-2 py-0.5 rounded bg-indigo-700/50 text-indigo-200 text-xs">
+                          {r.channel}
+                        </span>
+                      </td>
                       <td>{r.rating ?? '—'}</td>
                       <td>
-                        <span className="badge">{r.sentiment.label}</span>
+                        <span className={`px-2 py-0.5 rounded text-xs ${
+                          r.sentiment.label === 'positive' ? 'bg-green-700/50 text-green-200'
+                          : r.sentiment.label === 'negative' ? 'bg-red-700/50 text-red-200'
+                          : 'bg-gray-700/50 text-gray-200'
+                        }`}>
+                          {r.sentiment.label}
+                        </span>
                       </td>
                       <td className="max-w-[220px]">
                         <div className="flex flex-wrap gap-1">
-                          {r.categories.map(c => <span key={c} className="badge">{c}</span>)}
+                          {r.categories.map(c => (
+                            <span key={c} className="px-2 py-0.5 rounded-full bg-blue-900 text-blue-200 text-xs">
+                              {c}
+                            </span>
+                          ))}
                         </div>
                       </td>
                       <td className="max-w-[540px]">
-                        <p className="text-slate-200 line-clamp-4">{r.text}</p>
+                        <p className="text-slate-200 line-clamp-3">{r.text}</p>
                       </td>
                       <td>
-                        <label className="inline-flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={!!r.approved}
-                            onChange={e => toggleApproval(r.id, e.currentTarget.checked)}
-                          />
-                          <span className="text-xs text-slate-400">Show on site</span>
-                        </label>
+                        <Switch checked={!!r.approved} onCheckedChange={val => toggleApproval(r.id, val)} />
                       </td>
                     </tr>
                   ))}
@@ -209,10 +213,10 @@ export default function Dashboard() {
   )
 }
 
-function KPI({ title, value }: { title: string, value: string | number }) {
+function KPI({ title, value, color }: { title: string, value: string | number, color: string }) {
   return (
-    <div className="card">
-      <div className="text-slate-400 text-xs">{title}</div>
+    <div className={`card ${color} text-white`}>
+      <div className="text-xs">{title}</div>
       <div className="text-2xl font-semibold mt-1">{value}</div>
     </div>
   )

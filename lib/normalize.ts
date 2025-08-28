@@ -25,7 +25,7 @@ export function normalizeHostawayReview(r: any, approvedMap: Record<string, bool
     author: r.guestName || null,
     categories: cats,
     sentiment: s,
-    approved: Boolean(approvedMap[id]),
+    approved: approvedMap[id] ?? false,        
     url: null
   }
 }
@@ -120,3 +120,4 @@ function extractCategories(text: string): string[] {
   }
   return Array.from(new Set(cats))
 }
+

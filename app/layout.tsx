@@ -2,7 +2,7 @@ import './globals.css'
 import type { ReactNode } from 'react'
 
 export const metadata = {
-  title: 'Flex Living – Reviews Dashboard',
+  title: 'Flex Living –  Dashboard',
   description: 'Assess per‑property performance based on guest reviews'
 }
 
@@ -22,7 +22,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </header>
         <main className="container py-6">{children}</main>
         <footer className="container py-10 text-xs text-slate-400">
-          Made for the Flex Living assignment. Next.js + TailwindCSS.
+          Created by Kabelo Thato Ratshefola [Flex Living AI Engineer 😉].
         </footer>
       </body>
     </html>
